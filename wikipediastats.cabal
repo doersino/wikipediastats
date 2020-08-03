@@ -1,0 +1,85 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: ce0545e22684d472f6df0582a02a911ac2d7fbbfc2367edb3f87bb256a827fbe
+
+name:           wikipediastats
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/doersino/wikipediastats#readme>
+homepage:       https://github.com/doersino/wikipediastats#readme
+bug-reports:    https://github.com/doersino/wikipediastats/issues
+author:         Noah Doersing
+maintainer:     git@noahdoersing.com
+copyright:      2020 Noah Doersing
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/doersino/wikipediastats
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_wikipediastats
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , html-conduit
+    , http-conduit
+    , json
+    , text
+    , twitter-conduit
+    , xml-conduit
+    , xml-types
+  default-language: Haskell2010
+
+executable wikipediastats-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_wikipediastats
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , html-conduit
+    , http-conduit
+    , json
+    , text
+    , twitter-conduit
+    , wikipediastats
+    , xml-conduit
+    , xml-types
+  default-language: Haskell2010
+
+test-suite wikipediastats-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_wikipediastats
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , html-conduit
+    , http-conduit
+    , json
+    , text
+    , twitter-conduit
+    , wikipediastats
+    , xml-conduit
+    , xml-types
+  default-language: Haskell2010
