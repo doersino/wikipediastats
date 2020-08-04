@@ -19,6 +19,7 @@ import           System.Directory    (doesFileExist)
 import           Data.Maybe          (catMaybes, fromMaybe)
 import           Data.Map            (Map)
 import qualified Data.Map as Map
+import Data.Ini.Config
 
 
 someFunc :: IO ()
@@ -128,20 +129,20 @@ storeStats f s = do
 pairUp :: WikipediasStats2 -> WikipediasStats2 -> WikipediasStatsCompared2
 pairUp os ns = Map.intersectionWith (\o n -> (o, n)) os ns
 
+-- compareStats $ fromList [(Wikipedia {subdomain = "zu", language = "Zulu"}, (fromList [("mw-statistics-articles",4842),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)],fromList [("mw-statistics-articles",5001),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)]))]
 compareStats :: WikipediasStatsCompared2 -> WikipediasStats2
 compareStats c = Map.map (\(o, n) ->
                             Map.filter (/= 0) $ Map.intersectionWith leadingDigitChanged o n) c
   where
     --leadingDigitChanged ov nv = case nv - ov of
-    leadingDigitChanged ov nv = case (floor $ logBase 10 (fromIntegral nv)) - (floor $ logBase 10 (fromIntegral ov)) of
-        0 -> 0
-        --n -> nv
-        n -> let m = floor $ logBase 10 (fromIntegral nv) in if m <= 0 then 0 else 10^m
+    leadingDigitChanged ov nv = if (head $ show nv) == (head $ show ov)
+        then 0
+        else read $ (head $ show nv) : (take (length (tail $ show nv)) $ repeat '0')
         -- TODO already filter out zeros here
 
--- TODO refactor this function
+-- TODO can make this function a bit more point-free
 prettyComparedStats :: WikipediasStats2 -> [String]
-prettyComparedStats s = concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
+prettyComparedStats s = concatMap Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
                             Map.mapWithKey (\cl dif ->
                                 prettyTweetText w cl dif) c) s
 
@@ -170,8 +171,27 @@ statsPath = "test.json"
 limitToNLargest :: Int
 limitToNLargest = 9999
 
+-- TODO adts for these, see https://hackage.haskell.org/package/config-ini-0.2.4.0/docs/Data-Ini-Config.html
+parseConfig :: IniParser ((String, Int, Int), (String, String, String, String))
+parseConfig = do
+    general <- section "GENERAL" $ do
+        cacheFile       <- field        "cacheFile"
+        verbosity       <- fieldOf      "verbosity"       number
+        limitToNLargest <- fieldOf      "limitToNLargest" number
+        return (unpack cacheFile, verbosity, limitToNLargest)
+    twitter <- section "TWITTER" $ do
+        consumerKey       <- field "consumer_key"
+        consumerSecret    <- field "consumer_secret"
+        accessToken       <- field "access_token"
+        accessTokenSecret <- field "access_token_secret"
+        return (unpack consumerKey, unpack consumerSecret, unpack accessToken, unpack accessTokenSecret)
+    return (general, twitter)
+
 testing :: IO ()
 testing = do
+    configFile <- readFile "config.ini"
+    let config = parseIniFile (pack configFile) parseConfig
+    putStrLn $ show config
     -- TODO config loading
 
     putStr "Loading previous stats... "
