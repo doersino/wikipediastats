@@ -6,7 +6,7 @@ module Lib where
 --    )
 -- where
 
-import           Data.Text           (unpack, pack)
+import qualified Data.Text           as T (unpack, pack)
 import           Network.HTTP.Simple (httpSink, parseRequest)
 import           Text.HTML.DOM       (sinkDoc)
 import           Text.XML.Cursor     (attributeIs, hasAttribute, child, content, element, fromDocument, ($//), (&/), (&//))
@@ -19,7 +19,9 @@ import           System.Directory    (doesFileExist)
 import           Data.Maybe          (catMaybes, fromMaybe)
 import           Data.Map            (Map)
 import qualified Data.Map as Map
-import Data.Ini.Config
+import           Data.Ini.Config
+import           Web.Twitter.Conduit
+import qualified Data.ByteString.Char8 as B (pack)
 
 
 someFunc :: IO ()
@@ -49,7 +51,7 @@ getWikipedias = do
                &// element "table"
                &// element "tr"
     let row = map ($// child &// content) rows
-    let langs = init $ map (map unpack) $ map (\r -> [r !! 0, r !! 2]) $ filter (not . null) row  -- last row is total, i.e. just numbers, hence "init"
+    let langs = init $ map (map T.unpack) $ map (\r -> [r !! 0, r !! 2]) $ filter (not . null) row  -- last row is total, i.e. just numbers, hence "init"
     return $ map (\s -> Wikipedia (s !! 1) (s !! 0)) langs
 
 data WikipediaStats = WikipediaStats
@@ -91,12 +93,12 @@ getStat :: Document -> String -> IO (Maybe Integer)
 getStat doc c = do
     let cursor = fromDocument doc
     let stat = cursor
-               $// attributeIs "class" (pack c)
+               $// attributeIs "class" (T.pack c)
                &// attributeIs "class" "mw-statistics-numbers"
                &/ content
     return $ sanitize stat
   where
-    sanitize stat = readMaybe $ filter isDigit $ (unpack . head) stat :: Maybe Integer
+    sanitize stat = readMaybe $ filter isDigit $ (T.unpack . head) stat :: Maybe Integer
 
 getStats :: Wikipedia -> IO WikipediaStats2
 getStats w = do
@@ -135,10 +137,9 @@ compareStats c = Map.map (\(o, n) ->
                             Map.filter (/= 0) $ Map.intersectionWith leadingDigitChanged o n) c
   where
     --leadingDigitChanged ov nv = case nv - ov of
-    leadingDigitChanged ov nv = if (head $ show nv) == (head $ show ov)
+    leadingDigitChanged ov nv =  if (head $ show nv) == (head $ show ov) --for testing: if (last $ show nv) == (last $ show ov)
         then 0
         else read $ (head $ show nv) : (take (length (tail $ show nv)) $ repeat '0')
-        -- TODO already filter out zeros here
 
 -- TODO can make this function a bit more point-free
 prettyComparedStats :: WikipediasStats2 -> [String]
@@ -146,6 +147,7 @@ prettyComparedStats s = concatMap Map.elems $ Map.elems $ Map.mapWithKey (\w c -
                             Map.mapWithKey (\cl dif ->
                                 prettyTweetText w cl dif) c) s
 
+-- TODO convert zeros into natural language in some cases and sometimes insert spaces: 3 million, 300 000
 prettyTweetText :: Wikipedia -> String -> Integer -> String
 prettyTweetText w cl n = "The " ++ language w ++ " edition of Wikipedia " ++ replaceXXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show n) ++ ", check out more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
 
@@ -154,63 +156,103 @@ replaceXXX ('X':'X':'X':xs) s = s ++ replaceXXX xs s
 replaceXXX (x:xs)           s = x : replaceXXX xs s
 replaceXXX ""               s = ""
 
--- TODO config loading (verbosity, path to cache file)
--- TODO tweeting (limit to one tweet per period: the one belonging to the highest-ranking wiki)
--- TODO tests, https://hspec.github.io
 
--- https://docs.haskellstack.org/en/stable/README/
--- https://hackage.haskell.org/package/html-conduit
--- http://hackage.haskell.org/package/twitter-conduit
 
-verbose :: Bool
-verbose = True
+postTweet :: TwitterConfig -> String -> IO ()
+postTweet twitterConfig status = do
+    let twInfo = setCredential tokens credential def
+    mgr <- newManager tlsManagerSettings
+    res <- call twInfo mgr $ statusesUpdate $ T.pack status
+    return ()
+  where
+    tokens = twitterOAuth
+        { oauthConsumerKey = B.pack $ consumerKey twitterConfig
+        , oauthConsumerSecret = B.pack $ consumerSecret twitterConfig
+        }
+    credential = Credential
+        [ ("oauth_token", B.pack $ accessToken twitterConfig)
+        , ("oauth_token_secret", B.pack $ accessTokenSecret twitterConfig)
+        ]
 
-statsPath :: FilePath
-statsPath = "test.json"
 
-limitToNLargest :: Int
-limitToNLargest = 9999
 
--- TODO adts for these, see https://hackage.haskell.org/package/config-ini-0.2.4.0/docs/Data-Ini-Config.html
-parseConfig :: IniParser ((String, Int, Int), (String, String, String, String))
+data GeneralConfig = GeneralConfig
+    { cacheFile :: FilePath
+    , verbosity :: Int
+    , limitToNLargest :: Int
+    } deriving (Show)
+
+data TwitterConfig = TwitterConfig
+    { consumerKey :: String
+    , consumerSecret :: String
+    , accessToken :: String
+    , accessTokenSecret :: String
+    } deriving (Show)
+
+tweetingPossible :: TwitterConfig -> Bool
+tweetingPossible tc = (not . null) $ concat $ [ consumerKey tc
+                                              , consumerSecret tc
+                                              , accessToken tc
+                                              , accessTokenSecret tc
+                                              ]
+
+data Config = Config
+    { generalConfig :: GeneralConfig
+    , twitterConfig :: TwitterConfig
+    } deriving (Show)
+
+parseConfig :: IniParser Config
 parseConfig = do
     general <- section "GENERAL" $ do
         cacheFile       <- field        "cacheFile"
         verbosity       <- fieldOf      "verbosity"       number
         limitToNLargest <- fieldOf      "limitToNLargest" number
-        return (unpack cacheFile, verbosity, limitToNLargest)
+        return $ GeneralConfig (T.unpack cacheFile) verbosity limitToNLargest
     twitter <- section "TWITTER" $ do
         consumerKey       <- field "consumer_key"
         consumerSecret    <- field "consumer_secret"
         accessToken       <- field "access_token"
         accessTokenSecret <- field "access_token_secret"
-        return (unpack consumerKey, unpack consumerSecret, unpack accessToken, unpack accessTokenSecret)
-    return (general, twitter)
+        return $ TwitterConfig (T.unpack consumerKey) (T.unpack consumerSecret) (T.unpack accessToken) (T.unpack accessTokenSecret)
+    return $ Config general twitter
+
+-- TODO decent test coverage, https://hspec.github.io
+
+-- https://docs.haskellstack.org/en/stable/README/
+-- https://hackage.haskell.org/package/html-conduit
+-- http://hackage.haskell.org/package/twitter-conduit
 
 testing :: IO ()
 testing = do
     configFile <- readFile "config.ini"
-    let config = parseIniFile (pack configFile) parseConfig
-    putStrLn $ show config
-    -- TODO config loading
+    let config = case (parseIniFile (T.pack configFile) parseConfig) of
+                    Left err -> error err
+                    Right co -> co
+    let generalConf = generalConfig config
+    let twitterConf = twitterConfig config
+    let statsPath = cacheFile generalConf     -- TODO rename
+    let notSilent = verbosity generalConf > 0
+    let verbose   = verbosity generalConf == 2
+    when notSilent $ putStrLn "Successfully parsed configuration."
+    when verbose $ putStrLn $ show config
 
-    putStr "Loading previous stats... "
+    when notSilent $ putStr "Loading previous stats... "
     oldS <- loadStats statsPath
-    putStrLn "done."
+    when notSilent $ putStrLn "done."
     when verbose $ putStrLn $ show oldS
 
-    putStr "Getting list of Wikipedias... "
+    when notSilent $ putStr "Getting list of Wikipedias... "
     w <- getWikipedias
-    w <- return $ take limitToNLargest w
+    w <- return $ take (limitToNLargest generalConf) w  -- TODO rename limitToNLargest
     let m = length w
-    putStrLn $ "got " ++ show m ++ "."
+    when notSilent $ putStrLn $ "got " ++ show m ++ "."
     when verbose $ putStrLn $ show w
 
     let numberedWikipedias = zip [0..] w
     s2 <- mapM (\(n, w) -> do
-        putStr $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
+        when notSilent $ putStr $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
         s <- getStats w
-        putStrLn $ "done."
+        when notSilent $ putStrLn $ "done."
         when verbose $ putStrLn $ show s
         return s
         ) numberedWikipedias
@@ -218,16 +260,30 @@ testing = do
 
     case oldS of
         Just os -> do
+            -- TODO status msg
             let pairs = pairUp os s
             let comp = compareStats pairs
-            putStrLn $ show comp
+            when verbose $ putStrLn $ show comp
+            -- TODO status msg
             let pret = prettyComparedStats comp
-            mapM_ putStrLn pret
-        Nothing -> return ()
+            when verbose $ mapM_ putStrLn pret
 
-    putStr "Storing updated stats... "
-    storeStats statsPath s
-    putStrLn "done."
+            if tweetingPossible twitterConf
+                then do
+                    -- TODO statusmsg
+                    -- TODO tweeting (maybe limit to one tweet per period: the one belonging to the highest-ranking wiki)
+                    mapM_ (postTweet twitterConf) pret
+                else do
+                    -- TODO statusmsg
+                    when notSilent $ putStrLn "Tweeting is disabled since not all API keys and secrets have been specified."
+                    return ()
+        Nothing -> do
+            -- TODO status msg
+            return ()
 
     -- TODO tweet
 
+    -- TODO store the largest tweeted value as well, in order to avoid duplicates when a bunch of stuff is added, deleted, then added again?
+    when notSilent $ putStr "Storing updated stats... "
+    storeStats statsPath s
+    when notSilent $ putStrLn "done."

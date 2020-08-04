@@ -30,6 +30,7 @@ dependencies:
 - directory
 - containers
 - config-ini
+- bytestring
 
 library:
   source-dirs: src

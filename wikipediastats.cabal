@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 28d7194e8a6660b357211f481e94bc02b758e6ca72f9501b48b95f9d644623ff
+-- hash: a6d54dba1a91df469f4206c527a5f02d0e11d015e6bf0e2f440ac6017b44bc12
 
 name:           wikipediastats
 version:        0.1.0.0
@@ -33,6 +33,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , config-ini
     , containers
     , directory
@@ -54,6 +55,7 @@ executable wikipediastats-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , config-ini
     , containers
     , directory
@@ -77,6 +79,7 @@ test-suite wikipediastats-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , config-ini
     , containers
     , directory
