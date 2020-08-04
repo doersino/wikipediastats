@@ -29,6 +29,7 @@ dependencies:
 - json
 - directory
 - containers
+- config-ini
 
 library:
   source-dirs: src

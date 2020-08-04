@@ -71,10 +71,10 @@ type StatIdentifier = String
 
 statDescriptions :: Map StatIdentifier String
 statDescriptions = Map.fromList
-    [ ("mw-statistics-articles", "now consists of XX articles")
-    , ("mw-statistics-pages", "now contains XX pages including non-articles")
-    , ("mw-statistics-edits", "has now received XX edits")
-    , ("mw-statistics-users", "has now been shaped by XX registered users")
+    [ ("mw-statistics-articles", "now consists of XXX articles")
+    , ("mw-statistics-pages",    "now contains XXX pages including non-articles")
+    , ("mw-statistics-edits",    "has now received XXX edits")
+    , ("mw-statistics-users",    "has now been shaped by XXX registered users")
     ]
 
 type WikipediaStats2 = Map StatIdentifier Integer
@@ -130,24 +130,28 @@ pairUp os ns = Map.intersectionWith (\o n -> (o, n)) os ns
 
 compareStats :: WikipediasStatsCompared2 -> WikipediasStats2
 compareStats c = Map.map (\(o, n) ->
-                            Map.intersectionWith diff o n) c
+                            Map.filter (/= 0) $ Map.intersectionWith leadingDigitChanged o n) c
   where
-    --diff ov nv = case nv - ov of
-    diff ov nv = case round $ logBase 10 (fromIntegral nv) - logBase 10 (fromIntegral ov) of
+    --leadingDigitChanged ov nv = case nv - ov of
+    leadingDigitChanged ov nv = case (floor $ logBase 10 (fromIntegral nv)) - (floor $ logBase 10 (fromIntegral ov)) of
         0 -> 0
-        n -> let m = round $ logBase 10 (fromIntegral nv) in if m <= 0 then 0 else 10^m
+        --n -> nv
+        n -> let m = floor $ logBase 10 (fromIntegral nv) in if m <= 0 then 0 else 10^m
         -- TODO already filter out zeros here
 
 -- TODO refactor this function
 prettyComparedStats :: WikipediasStats2 -> [String]
-prettyComparedStats s = filter (not . null) $ concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
+prettyComparedStats s = concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
                             Map.mapWithKey (\cl dif ->
-                                if dif == 0 then "" else "The " ++ language w ++ " edition of Wikipedia " ++ replaceXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show dif)) c) s
+                                prettyTweetText w cl dif) c) s
 
-replaceXX :: String -> String -> String
-replaceXX ('X':'X':xs) s = s ++ replaceXX xs s
-replaceXX (x:xs)       s = x : replaceXX xs s
-replaceXX ""           s = ""
+prettyTweetText :: Wikipedia -> String -> Integer -> String
+prettyTweetText w cl n = "The " ++ language w ++ " edition of Wikipedia " ++ replaceXXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show n) ++ ", check out more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
+
+replaceXXX :: String -> String -> String
+replaceXXX ('X':'X':'X':xs) s = s ++ replaceXXX xs s
+replaceXXX (x:xs)           s = x : replaceXXX xs s
+replaceXXX ""               s = ""
 
 -- TODO config loading (verbosity, path to cache file)
 -- TODO tweeting (limit to one tweet per period: the one belonging to the highest-ranking wiki)
