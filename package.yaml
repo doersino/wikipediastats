@@ -28,6 +28,7 @@ dependencies:
 - twitter-conduit
 - json
 - directory
+- containers
 
 library:
   source-dirs: src

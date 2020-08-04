@@ -16,7 +16,9 @@ import           Data.Char           (isDigit)
 import           Control.Monad       (when)
 import           Text.JSON           (JSON, decode, encode, Result(..), showJSON, readJSON)
 import           System.Directory    (doesFileExist)
-import           Data.Maybe          (fromMaybe)
+import           Data.Maybe          (catMaybes, fromMaybe)
+import           Data.Map            (Map)
+import qualified Data.Map as Map
 
 
 someFunc :: IO ()
@@ -28,7 +30,7 @@ data Wikipedia = Wikipedia
     { subdomain :: String
     , language :: String
     }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 instance JSON Wikipedia where
     showJSON w = showJSON [subdomain w, language w]
@@ -64,6 +66,21 @@ instance JSON WikipediaStats where
         Ok (w, [c, p, e, r]) -> Ok $ WikipediaStats {wikipedia = w, contentPages = c, pages = p, pageEdits = e, registeredUsers = r}
         Error e -> Error e
 
+
+type StatIdentifier = String
+
+statDescriptions :: Map StatIdentifier String
+statDescriptions = Map.fromList
+    [ ("mw-statistics-articles", "now consists of XX articles")
+    , ("mw-statistics-pages", "now contains XX pages including non-articles")
+    , ("mw-statistics-edits", "has now received XX edits")
+    , ("mw-statistics-users", "has now been shaped by XX registered users")
+    ]
+
+type WikipediaStats2 = Map StatIdentifier Integer
+type WikipediasStats2 = Map Wikipedia WikipediaStats2
+type WikipediasStatsCompared2 = Map Wikipedia (WikipediaStats2, WikipediaStats2)
+
 getStatsPage :: String -> IO Document
 getStatsPage url = do
     req <- parseRequest url
@@ -80,17 +97,18 @@ getStat doc c = do
   where
     sanitize stat = readMaybe $ filter isDigit $ (unpack . head) stat :: Maybe Integer
 
-getStats :: Wikipedia -> IO WikipediaStats
+getStats :: Wikipedia -> IO WikipediaStats2
 getStats w = do
     let url = "https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
     doc <- getStatsPage url
-    cp <- getStat doc "mw-statistics-articles"
-    p <- getStat doc "mw-statistics-pages"
-    pe <- getStat doc "mw-statistics-edits"
-    ru <- getStat doc "mw-statistics-users"
-    return $ WikipediaStats w cp p pe ru
+    let classes = Map.keys statDescriptions
+    stats <- mapM (getStat doc) classes
+    let stats2 = map (\(c, s) -> case s of
+                                    Nothing -> Nothing
+                                    Just a -> Just (c, a)) $ zip classes stats
+    return $ Map.fromList $ catMaybes stats2
 
-loadStats :: FilePath -> IO (Maybe [WikipediaStats])
+loadStats :: FilePath -> IO (Maybe WikipediasStats2)
 loadStats f = do
     exists <- doesFileExist f
     if not exists
@@ -102,57 +120,35 @@ loadStats f = do
                 (Error s) -> return Nothing
                 (Ok s)    -> return $ Just s
 
-storeStats :: FilePath -> [WikipediaStats] -> IO ()
+storeStats :: FilePath -> WikipediasStats2 -> IO ()
 storeStats f s = do
     writeFile f (encode s)
 
 
--- TODO test this, it seems iffy and is also dumb
-pairUp :: [WikipediaStats] -> [WikipediaStats] -> [(WikipediaStats, WikipediaStats)]
-pairUp os ns = fromMaybe [] $ sequence $ filter (/= Nothing) $ map (\n ->
-    let nw = wikipedia n in case filter (\s -> wikipedia s == nw) os of
-        [] -> Nothing
-        [o] -> Just (o, n)
-    ) ns
+pairUp :: WikipediasStats2 -> WikipediasStats2 -> WikipediasStatsCompared2
+pairUp os ns = Map.intersectionWith (\o n -> (o, n)) os ns
 
-compareStats :: (WikipediaStats, WikipediaStats) -> WikipediaStats
-compareStats (os, ns) = WikipediaStats
-    { wikipedia = wikipedia os
-    , contentPages = Just $ diff (contentPages os) (contentPages ns)
-    , pages = Just $ diff (pages os) (pages ns)
-    , pageEdits = Just $ diff (pageEdits os) (pageEdits ns)
-    , registeredUsers = Just $ diff (registeredUsers os) (registeredUsers ns)
-    }
+compareStats :: WikipediasStatsCompared2 -> WikipediasStats2
+compareStats c = Map.map (\(o, n) ->
+                            Map.intersectionWith diff o n) c
   where
-    diff Nothing _ = 0
-    diff _ Nothing = 0
-    diff (Just o) (Just n) = n - o
-
-compareStats' :: (WikipediaStats, WikipediaStats) -> WikipediaStats
-compareStats' (os, ns) = WikipediaStats
-    { wikipedia = wikipedia os
-    , contentPages = Just $ round $ diff (contentPages os) (contentPages ns)
-    , pages = Just $ round $ diff (pages os) (pages ns)
-    , pageEdits = Just $ round $ diff (pageEdits os) (pageEdits ns)
-    , registeredUsers = Just $ round $ diff (registeredUsers os) (registeredUsers ns)
-    }
-  where
-    diff Nothing _ = 0
-    diff _ Nothing = 0
-    diff (Just o) (Just n) = logBase 10 (fromIntegral n) - logBase 10 (fromIntegral o)
+    diff ov nv = case nv - ov of
+    --diff ov nv = case round $ logBase 10 (fromIntegral nv) - logBase 10 (fromIntegral ov) of
+        0 -> 0
+        n -> 10^(round $ logBase 10 (fromIntegral nv))
 
 -- TODO return a list
-prettyComparedStats :: WikipediaStats -> String
-prettyComparedStats (WikipediaStats _ (Just 0) (Just 0) (Just 0) (Just 0)) = ""
-prettyComparedStats (WikipediaStats (Wikipedia _ lang) (Just cp) (Just p) (Just pe) (Just ru)) =
-       if cp > 0 then "TODO" else ""
-    ++ if p > 0 then "TODO" else ""
-    ++ if pe > 0 then "TODO" else ""
-    ++ if ru > 0 then "TODO" else ""
+prettyComparedStats :: WikipediasStats2 -> [String]
+prettyComparedStats s = concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
+                            Map.mapWithKey (\cl dif ->
+                                "The " ++ language w ++ " edition of Wikipedia " ++ replaceXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show dif)) c) s
 
+replaceXX :: String -> String -> String
+replaceXX ('X':'X':xs) s = s ++ replaceXX xs s
+replaceXX (x:xs)       s = x : replaceXX xs s
+replaceXX ""           s = ""
 
 -- TODO config loading (verbosity, path to cache file)
--- TODO threshold passing detection: might be better to use a map of wiki to stats everywhere
 -- TODO tweeting (limit to one tweet per period: the one belonging to the highest-ranking wiki)
 -- TODO tests, https://hspec.github.io
 
@@ -175,27 +171,28 @@ testing = do
 
     putStr "Getting list of Wikipedias... "
     w <- getWikipedias
-    w <- return $ take 10 w  -- TODO just for testing
+    w <- return $ take 10 w
     let m = length w
     putStrLn $ "got " ++ show m ++ "."
     when verbose $ putStrLn $ show w
 
     let numberedWikipedias = zip [0..] w
-    s <- mapM (\(n, w) -> do
+    s2 <- mapM (\(n, w) -> do
         putStr $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
         s <- getStats w
         putStrLn $ "done."
         when verbose $ putStrLn $ show s
         return s
         ) numberedWikipedias
+    let s = Map.fromList $ zip w s2
 
     case oldS of
-        (Just os) -> do
+        Just os -> do
             let pairs = pairUp os s
-            let comp = map compareStats' pairs
+            let comp = compareStats pairs
             putStrLn $ show comp
-            let pret = map prettyComparedStats comp
-            putStrLn $ show pret
+            let pret = prettyComparedStats comp
+            mapM_ putStrLn pret
         Nothing -> return ()
 
     putStr "Storing updated stats... "
