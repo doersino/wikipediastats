@@ -132,16 +132,17 @@ compareStats :: WikipediasStatsCompared2 -> WikipediasStats2
 compareStats c = Map.map (\(o, n) ->
                             Map.intersectionWith diff o n) c
   where
-    diff ov nv = case nv - ov of
-    --diff ov nv = case round $ logBase 10 (fromIntegral nv) - logBase 10 (fromIntegral ov) of
+    --diff ov nv = case nv - ov of
+    diff ov nv = case round $ logBase 10 (fromIntegral nv) - logBase 10 (fromIntegral ov) of
         0 -> 0
-        n -> 10^(round $ logBase 10 (fromIntegral nv))
+        n -> let m = round $ logBase 10 (fromIntegral nv) in if m <= 0 then 0 else 10^m
+        -- TODO already filter out zeros here
 
--- TODO return a list
+-- TODO refactor this function
 prettyComparedStats :: WikipediasStats2 -> [String]
-prettyComparedStats s = concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
+prettyComparedStats s = filter (not . null) $ concat $ map Map.elems $ Map.elems $ Map.mapWithKey (\w c ->
                             Map.mapWithKey (\cl dif ->
-                                "The " ++ language w ++ " edition of Wikipedia " ++ replaceXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show dif)) c) s
+                                if dif == 0 then "" else "The " ++ language w ++ " edition of Wikipedia " ++ replaceXX (fromMaybe "" $ Map.lookup cl statDescriptions) (show dif)) c) s
 
 replaceXX :: String -> String -> String
 replaceXX ('X':'X':xs) s = s ++ replaceXX xs s
@@ -162,8 +163,13 @@ verbose = True
 statsPath :: FilePath
 statsPath = "test.json"
 
+limitToNLargest :: Int
+limitToNLargest = 9999
+
 testing :: IO ()
 testing = do
+    -- TODO config loading
+
     putStr "Loading previous stats... "
     oldS <- loadStats statsPath
     putStrLn "done."
@@ -171,7 +177,7 @@ testing = do
 
     putStr "Getting list of Wikipedias... "
     w <- getWikipedias
-    w <- return $ take 10 w
+    w <- return $ take limitToNLargest w
     let m = length w
     putStrLn $ "got " ++ show m ++ "."
     when verbose $ putStrLn $ show w
@@ -198,4 +204,6 @@ testing = do
     putStr "Storing updated stats... "
     storeStats statsPath s
     putStrLn "done."
+
+    -- TODO tweet
 
