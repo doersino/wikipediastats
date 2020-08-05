@@ -21,16 +21,16 @@ description:         Please see the README on GitHub at <https://github.com/doer
 dependencies:
 - base >= 4.7 && < 5
 - text
-- xml-types
-- xml-conduit
-- http-conduit
-- html-conduit
-- twitter-conduit
-- json
 - directory
 - containers
-- config-ini
 - bytestring
+- json
+- config-ini
+- http-conduit
+- html-conduit
+- xml-types
+- xml-conduit
+- twitter-conduit
 
 library:
   source-dirs: src
@@ -56,3 +56,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - wikipediastats
+    - hspec
+    - QuickCheck

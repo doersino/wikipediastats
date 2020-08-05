@@ -1,10 +1,8 @@
-module Main where
-
 import Types
 import Config
 import StatsIO
-import Tweeting
 import StatsProcessing
+import Tweeting
 
 import qualified Data.Text as T      (unpack, pack)
 import           Control.Monad       (when)
@@ -15,6 +13,8 @@ import qualified Data.Map as Map
 -- TODO error handling: https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
 
 -- TODO make output helper methods, maybe somehow with reader monad for config?
+
+-- TODO finally, check for stray TODOs
 
 main :: IO ()
 main = do

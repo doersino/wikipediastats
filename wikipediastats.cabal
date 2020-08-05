@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d310900334ea4cb391dc1655feb0d8254517aeedb14d8ba9516f0df9ef01996d
+-- hash: 8325ad0c1aa22af96c899d7d1c21a3819669481d7649e3047831278497b141e2
 
 name:           wikipediastats
 version:        0.1.0.0
@@ -82,11 +82,13 @@ test-suite wikipediastats-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , bytestring
     , config-ini
     , containers
     , directory
+    , hspec
     , html-conduit
     , http-conduit
     , json

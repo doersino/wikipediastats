@@ -6,7 +6,7 @@ import           Data.Maybe          (fromMaybe)
 import           Data.Map            (Map)
 import qualified Data.Map as Map
 
--- compareStats $ fromList [(Wikipedia {subdomain = "zu", language = "Zulu"}, (fromList [("mw-statistics-articles",4842),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)],fromList [("mw-statistics-articles",5001),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)]))]
+-- test: compareStats $ fromList [(Wikipedia {subdomain = "zu", language = "Zulu"}, (fromList [("mw-statistics-articles",4842),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)],fromList [("mw-statistics-articles",5001),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)]))]
 compareStats :: WikipediasStats -> WikipediasStats -> WikipediasStatsCompared
 compareStats os ns = Map.intersectionWith (\o n ->
                             Map.filter (/= 0) $ Map.intersectionWith milestoneReached o n) os ns
@@ -14,7 +14,7 @@ compareStats os ns = Map.intersectionWith (\o n ->
     milestoneReached ov nv = if firstDigitChanged ov nv
         then read $ (head $ show nv) : (take (length (tail $ show nv)) $ repeat '0')
         else 0
-    firstDigitChanged ov nv = (head $ show nv) == (head $ show ov)
+    firstDigitChanged ov nv = (head $ show nv) /= (head $ show ov)
 
 -- TODO can make this function a bit more point-free
 -- TODO rename
