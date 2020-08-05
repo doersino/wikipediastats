@@ -24,7 +24,6 @@ dependencies:
 - xml-types
 - xml-conduit
 - http-conduit
-- http-client
 - html-conduit
 - twitter-conduit
 - json

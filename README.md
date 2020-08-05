@@ -5,7 +5,7 @@ While the main purpose of building this Twitter bot was to get myself reacquaint
 1. downloads and parses [a list of all the different-language Wikipedias](https://meta.wikimedia.org/wiki/List_of_Wikipedias),
 2. **scrapes some of the more interesting [statistics](https://en.wikipedia.org/wiki/Special:Statistics)** for each of them,
 3. **compares these stats to previously scraped and cached values** (unless the cache doesn't exist, in which case `goto 5`),
-4. **[fires off](http://hackage.haskell.org/package/twitter-conduit) a tweet if a milestone has been reached**, i.e. the first digit of a stat has changed (e.g. 49894 → 50002), and
+4. **[fires off](https://github.com/himura/twitter-conduit/blob/master/sample/post.hs) a tweet if a milestone has been reached**, i.e. the first digit of a stat has changed (e.g. 49894 → 50002), and
 5. refreshes the now-stale cache with the newly scraped values.
 
 
@@ -49,3 +49,5 @@ TODO check!
 
 * This three-afternoon project was my first foray into Haskell after not using it for a couple of years (and back then, I was firmly lodged in the beginner-to-intermediate gap). Don't expect elegance, custom monads or adherence to best practices.
 * I haven't bothered listing version ranges for the dependencies of this tool in `package.yaml` because I don't know which past or future versions will invariably break things, but I think the choice of stackage resolver makes this less problematic than it used to be before Stack was around? Not sure. If you, a future software historian, can't seem to get the dependecies to play along nicely, I'm sorry.
+* An improvement I didn't care to implement: Store the largest tweeted value (for each stat, for each Wikipedia) in the cache in order to avoid duplicate tweets when the stat reaches a milestone, falls below it again due to article deletions or similar, then reaches the milestone again.
+* Some Wikipedias are ignored by this bot – that's those whose statistics pages don't use Arabic numerals. This could probably be worked around in various ways, but I'm too white to consider it a priority for a Twitter bot.
