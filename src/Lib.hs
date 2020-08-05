@@ -6,8 +6,10 @@ module Lib where
 --    )
 -- where
 
+-- TODO clean up and sort imports
 import qualified Data.Text           as T (unpack, pack)
 import           Network.HTTP.Simple (httpSink, parseRequest)
+import           Network.HTTP.Client (parseUrlThrow)
 import           Text.HTML.DOM       (sinkDoc)
 import           Text.XML.Cursor     (attributeIs, hasAttribute, child, content, element, fromDocument, ($//), (&/), (&//))
 import           Text.XML            (Document)
@@ -43,7 +45,7 @@ instance JSON Wikipedia where
 
 getWikipedias :: IO [Wikipedia]
 getWikipedias = do
-    req <- parseRequest "https://meta.wikimedia.org/wiki/List_of_Wikipedias/Table"
+    req <- parseUrlThrow "https://meta.wikimedia.org/wiki/List_of_Wikipedias/Table"
     doc <- httpSink req $ const sinkDoc
     let cursor = fromDocument doc
     let rows = cursor
@@ -86,7 +88,7 @@ type WikipediasStatsCompared2 = Map Wikipedia (WikipediaStats2, WikipediaStats2)
 
 getStatsPage :: String -> IO Document
 getStatsPage url = do
-    req <- parseRequest url
+    req <- parseUrlThrow url
     httpSink req $ const sinkDoc
 
 getStat :: Document -> String -> IO (Maybe Integer)
@@ -179,7 +181,7 @@ postTweet twitterConfig status = do
 data GeneralConfig = GeneralConfig
     { cacheFile :: FilePath
     , verbosity :: Int
-    , limitToNLargest :: Int
+    , limit :: Int
     } deriving (Show)
 
 data TwitterConfig = TwitterConfig
@@ -204,10 +206,10 @@ data Config = Config
 parseConfig :: IniParser Config
 parseConfig = do
     general <- section "GENERAL" $ do
-        cacheFile       <- field        "cacheFile"
+        cacheFile       <- field        "cache_file"
         verbosity       <- fieldOf      "verbosity"       number
-        limitToNLargest <- fieldOf      "limitToNLargest" number
-        return $ GeneralConfig (T.unpack cacheFile) verbosity limitToNLargest
+        limit <- fieldOf      "limit" number
+        return $ GeneralConfig (T.unpack cacheFile) verbosity limit
     twitter <- section "TWITTER" $ do
         consumerKey       <- field "consumer_key"
         consumerSecret    <- field "consumer_secret"
@@ -216,11 +218,9 @@ parseConfig = do
         return $ TwitterConfig (T.unpack consumerKey) (T.unpack consumerSecret) (T.unpack accessToken) (T.unpack accessTokenSecret)
     return $ Config general twitter
 
--- TODO decent test coverage, https://hspec.github.io
-
--- https://docs.haskellstack.org/en/stable/README/
--- https://hackage.haskell.org/package/html-conduit
--- http://hackage.haskell.org/package/twitter-conduit
+-- TODO modularize: types, scraping/jsoning, tweeting, processing, main/app
+-- TODO error handling: https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
+-- TODO decent test coverage for data manipulation functions, use https://hspec.github.io
 
 testing :: IO ()
 testing = do
@@ -230,20 +230,22 @@ testing = do
                     Right co -> co
     let generalConf = generalConfig config
     let twitterConf = twitterConfig config
-    let statsPath = cacheFile generalConf     -- TODO rename
+    let cachePath = cacheFile generalConf
     let notSilent = verbosity generalConf > 0
     let verbose   = verbosity generalConf == 2
     when notSilent $ putStrLn "Successfully parsed configuration."
     when verbose $ putStrLn $ show config
 
+    --postTweet twitterConf "Test post please ignore"
+
     when notSilent $ putStr "Loading previous stats... "
-    oldS <- loadStats statsPath
+    oldS <- loadStats cachePath
     when notSilent $ putStrLn "done."
     when verbose $ putStrLn $ show oldS
 
     when notSilent $ putStr "Getting list of Wikipedias... "
     w <- getWikipedias
-    w <- return $ take (limitToNLargest generalConf) w  -- TODO rename limitToNLargest
+    w <- return $ take (limit generalConf) w
     let m = length w
     when notSilent $ putStrLn $ "got " ++ show m ++ "."
     when verbose $ putStrLn $ show w
@@ -268,6 +270,7 @@ testing = do
             let pret = prettyComparedStats comp
             when verbose $ mapM_ putStrLn pret
 
+            -- TODO limit tweets to like 3 each run to avoid cracking any api limits?
             if tweetingPossible twitterConf
                 then do
                     -- TODO statusmsg
@@ -285,5 +288,5 @@ testing = do
 
     -- TODO store the largest tweeted value as well, in order to avoid duplicates when a bunch of stuff is added, deleted, then added again?
     when notSilent $ putStr "Storing updated stats... "
-    storeStats statsPath s
+    storeStats cachePath s
     when notSilent $ putStrLn "done."

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a6d54dba1a91df469f4206c527a5f02d0e11d015e6bf0e2f440ac6017b44bc12
+-- hash: 6e6b2c3b9d3e3911ca440c48de202da2eca55f86360aac1fdc2be727e51558c8
 
 name:           wikipediastats
 version:        0.1.0.0
@@ -38,6 +38,7 @@ library
     , containers
     , directory
     , html-conduit
+    , http-client
     , http-conduit
     , json
     , text
@@ -60,6 +61,7 @@ executable wikipediastats-exe
     , containers
     , directory
     , html-conduit
+    , http-client
     , http-conduit
     , json
     , text
@@ -84,6 +86,7 @@ test-suite wikipediastats-test
     , containers
     , directory
     , html-conduit
+    , http-client
     , http-conduit
     , json
     , text
