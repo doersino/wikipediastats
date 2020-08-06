@@ -18,10 +18,14 @@ import           Data.Maybe          (catMaybes)
 import           Data.Map            (Map)
 import qualified Data.Map as Map
 
+fetchUrl :: String -> IO Document
+fetchUrl url = do
+    req <- parseUrlThrow url
+    httpSink req $ const sinkDoc
+
 getWikipedias :: IO [Wikipedia]
 getWikipedias = do
-    req <- parseUrlThrow "https://meta.wikimedia.org/wiki/List_of_Wikipedias/Table"
-    doc <- httpSink req $ const sinkDoc
+    doc <- fetchUrl "https://meta.wikimedia.org/wiki/List_of_Wikipedias/Table"
     let cursor = fromDocument doc
     let rows = cursor
                $// attributeIs "class" "mw-parser-output"
@@ -32,10 +36,7 @@ getWikipedias = do
     return $ map (\s -> Wikipedia (s !! 1) (s !! 0)) langs
 
 getStatsPage :: Wikipedia -> IO Document
-getStatsPage w = do
-    let url = "https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
-    req <- parseUrlThrow url
-    httpSink req $ const sinkDoc
+getStatsPage w = fetchUrl $ "https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
 
 extractStat :: Document -> String -> IO (Maybe Integer)
 extractStat doc c = do
@@ -54,7 +55,7 @@ getStats w = do
     let classes = Map.keys statDescriptions
     stats <- mapM (extractStat doc) classes
     let stats2 = map (\(c, s) -> case s of
-                                    Nothing -> Nothing  -- TODO this can be made more elegant by using map/fmap?
+                                    Nothing -> Nothing
                                     Just a -> Just (c, a)) $ zip classes stats
     return $ Map.fromList $ catMaybes stats2
 

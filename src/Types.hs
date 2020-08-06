@@ -18,7 +18,7 @@ instance JSON Wikipedia where
 
 type StatIdentifier = String
 
--- TODO note that this isn't a type, but whatever
+-- this isn't a type, but whatever
 statDescriptions :: Map StatIdentifier (String -> String)
 statDescriptions = Map.fromList
     [ ("mw-statistics-articles", \s -> "now contains " ++ s ++ " articles")

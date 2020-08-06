@@ -6,36 +6,33 @@ import           Data.Maybe          (fromMaybe)
 import           Data.Map            (Map)
 import qualified Data.Map as Map
 
--- test: compareStats $ fromList [(Wikipedia {subdomain = "zu", language = "Zulu"}, (fromList [("mw-statistics-articles",4842),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)],fromList [("mw-statistics-articles",5001),("mw-statistics-edits",91354),("mw-statistics-pages",8433),("mw-statistics-users",13375)]))]
--- TODO cleanup naming: os, ns, ov, nv
+associateStats :: [Wikipedia] -> [WikipediaStats] -> WikipediasStats
+associateStats ws ss = Map.fromList $ zip ws ss
+
 compareStats :: WikipediasStats -> WikipediasStats -> WikipediasStatsCompared
-compareStats os ns = Map.intersectionWith (\o n ->
-                            Map.filter (/= 0) $ Map.intersectionWith milestoneReached o n) os ns
+compareStats = Map.intersectionWith (\os ns -> Map.filter (/= 0) $ Map.intersectionWith milestoneReached os ns)
   where
-    milestoneReached ov nv = if firstDigitChanged ov nv
-        then read $ (head $ show nv) : (take (length (tail $ show nv)) $ repeat '0')
+    milestoneReached o n = if newEclipsesOld o n && aboveThreshold n && firstDigitChanged o n
+        then read $ (head $ show n) : (take (length (tail $ show n)) $ repeat '0')
         else 0
-    firstDigitChanged ov nv = (head $ show nv) /= (head $ show ov)
+    newEclipsesOld    o n = n > o    -- make sure the new stat is actually larger
+    aboveThreshold      n = n >= 10  -- only tweet when a stat is >=10
+    firstDigitChanged o n = (head $ show n) /= (head $ show o)
 
--- TODO can make this function a bit more point-free
--- TODO rename, fix names within
 prettyComparedStats :: WikipediasStatsCompared -> [String]
-prettyComparedStats s = concatMap Map.elems $ Map.elems $ (flip Map.mapWithKey) s $
-                            \w c -> (flip Map.mapWithKey) c $
-                            \cl dif -> buildTweetText w cl dif
+prettyComparedStats sc = concatMap Map.elems $ Map.elems $ (flip Map.mapWithKey) sc $
+                            \w s -> (flip Map.mapWithKey) s $
+                            \id stat -> buildTweetText w id stat
 
--- TODO convert zeros into natural language in some cases and sometimes insert spaces: 3 million, 300 000
 buildTweetText :: Wikipedia -> StatIdentifier -> Integer -> String
--- TODO cl -> id?
-buildTweetText w cl n = "The " ++ language w ++ " edition of Wikipedia "
-                        ++ (fromMaybe (\_ -> "") $ Map.lookup cl statDescriptions) (formatStat n)
-                        ++ "! Enjoy more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
+buildTweetText w id stat = "The " ++ language w ++ " edition of #Wikipedia "
+                           ++ (fromMaybe (\_ -> "") $ Map.lookup id statDescriptions) (formatStat stat)
+                           ++ "! Enjoy more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
 
--- TODO tests
 formatStat :: Integer -> String
 formatStat n | n < 10000          = show n
-             | n < 1000000        = let s = show n in
-                                        take (length s - 3) s ++ "," ++ drop (length s - 3) s
+             | n < 1000000        = let s = show n
+                                    in take (length s - 3) s ++ "," ++ drop (length s - 3) s
              | n < 1000000000     = (show $ n `div` 1000000) ++ " million"
              | n < 1000000000000  = (show $ n `div` 1000000000) ++ " billion"
              | otherwise          = (show $ n `div` 1000000000000) ++ " trillion"

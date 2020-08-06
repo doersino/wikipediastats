@@ -35,17 +35,13 @@ parseConfig = do
         consumerSecret    <- field "consumer_secret"
         accessToken       <- field "access_token"
         accessTokenSecret <- field "access_token_secret"
-        return $ TwitterConfig (T.unpack consumerKey) (T.unpack consumerSecret) (T.unpack accessToken) (T.unpack accessTokenSecret)
+        return $ TwitterConfig (T.unpack consumerKey)
+                               (T.unpack consumerSecret)
+                               (T.unpack accessToken)
+                               (T.unpack accessTokenSecret)
     return $ Config general twitter
 
 parseIni :: FilePath -> Config
 parseIni configFile = case (parseIniFile (T.pack configFile) parseConfig) of
                           Left err -> error err
                           Right co -> co
-
-tweetingPossible :: TwitterConfig -> Bool
-tweetingPossible tc = (not . null) $ concat $ [ consumerKey tc
-                                              , consumerSecret tc
-                                              , accessToken tc
-                                              , accessTokenSecret tc
-                                              ]

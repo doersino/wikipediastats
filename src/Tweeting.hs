@@ -8,6 +8,13 @@ import qualified Data.Text             as T (unpack, pack)
 import qualified Data.ByteString.Char8 as B (pack)
 import           Web.Twitter.Conduit
 
+tweetingPossible :: TwitterConfig -> Bool
+tweetingPossible tc = and $ map (not . null) [ consumerKey tc
+                                             , consumerSecret tc
+                                             , accessToken tc
+                                             , accessTokenSecret tc
+                                             ]
+
 postTweet :: TwitterConfig -> String -> IO ()
 postTweet twitterConfig status = do
     let twInfo = setCredential tokens credential def

@@ -4,36 +4,30 @@ import StatsIO
 import StatsProcessing
 import Tweeting
 
-import qualified Data.Text as T      (unpack, pack)
 import           Control.Monad       (when)
-import qualified Data.Map as Map
 
-
--- TODO decent test coverage for data manipulation functions, use https://hspec.github.io
--- TODO error handling: https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
-
--- TODO finally, check for stray TODOs
+-- TODO tweet text details: "Enjoy", really? #Wikipedia or @Wikipedia?, or without any? Something like "Hooray?", maybe if new number starts with 1 (=10^n)?
 
 runWith :: Config -> IO ()
 runWith c = do
-    status "Successfully loaded configuration."
+    statusLn "Successfully loaded configuration."
     debug $ show c
 
     status "Getting list of Wikipedias... "
-    w <- getWikipedias
-    w <- return $ take (limit $ generalConfig c) w
+    w' <- getWikipedias
+    w <- return $ take (limit $ generalConfig c) w'
     let m = length w
     statusLn $ "got " ++ show m ++ "."
     debug $ show w
 
     let numberedWikipedias = zip [0..] w
-    s2 <- (flip mapM) numberedWikipedias $ \(n, w) -> do
+    newStats' <- (flip mapM) numberedWikipedias $ \(n, w) -> do
         status $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
         s <- getStats w
         statusLn $ "done."
         debug $ show s
         return s
-    let newStats = Map.fromList $ zip w s2  -- TODO move this to a function in StatsProcessing, or StatsIO
+    let newStats = associateStats w newStats'
 
     status "Reading previous stats from cache... "
     oldStats' <- readStats $ cacheFile $ generalConfig c
