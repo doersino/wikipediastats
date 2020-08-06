@@ -21,11 +21,11 @@ type StatIdentifier = String
 -- this isn't a type, but whatever
 statDescriptions :: Map StatIdentifier (String -> String)
 statDescriptions = Map.fromList
-    [ ("mw-statistics-articles", \s -> "now contains " ++ s ++ " articles")
+    [ ("mw-statistics-articles", \s -> "now features " ++ s ++ " articles")
     , ("mw-statistics-pages",    \s -> "now consists of " ++ s ++ " pages (including non-articles)")
-    , ("mw-statistics-edits",    \s -> "has now received " ++ s ++ " edits")
+    , ("mw-statistics-edits",    \s -> "has now received a total of " ++ s ++ " edits")
     , ("mw-statistics-users",    \s -> "has now been shaped by " ++ s ++ " registered users")
-    , ("mw-statistics-hook",     \s -> "now weighs in at " ++ s ++ " words")
+    , ("mw-statistics-hook",     \s -> "now contains more than " ++ s ++ " words")
     ]
 
 type WikipediaStats = Map StatIdentifier Integer

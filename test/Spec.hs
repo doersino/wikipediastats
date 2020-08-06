@@ -128,17 +128,17 @@ main = hspec $ do
     describe "buildTweetText" $ do
         it "afar wikipedia has reached 1000 articles" $ do
             buildTweetText w1 "mw-statistics-articles" 1000
-                `shouldBe` "The Afar edition of #Wikipedia now contains 1000 articles! Enjoy more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
+                `shouldBe` "Hooray! The Afar edition of #Wikipedia now features 1000 articles! Explore more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
         it "afar wikipedia has reached 50,000 edits" $ do
             buildTweetText w1 "mw-statistics-edits" 50000
-                `shouldBe` "The Afar edition of #Wikipedia has now received 50,000 edits! Enjoy more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
+                `shouldBe` "The Afar edition of #Wikipedia has now received a total of 50,000 edits! Explore more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
         it "afar wikipedia has reached a million words" $ do
             buildTweetText w1 "mw-statistics-hook" 1000000
-                `shouldBe` "The Afar edition of #Wikipedia now weighs in at 1 million words! Enjoy more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
+                `shouldBe` "Hooray! The Afar edition of #Wikipedia now contains more than 1 million words! Explore more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"
 
     describe "prettyComparedStats" $ do
         it "cmp2 results in one line" $ do
             prettyComparedStats cmp2
-                `shouldBe` ["The Afar edition of #Wikipedia has now received 700,000 edits! Enjoy more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"]
+                `shouldBe` ["The Afar edition of #Wikipedia has now received a total of 700,000 edits! Explore more stats here: https://aa.wikipedia.org/wiki/Special:Statistics"]
         it "cmp4 is empty" $ do
             prettyComparedStats cmp4 `shouldBe` []

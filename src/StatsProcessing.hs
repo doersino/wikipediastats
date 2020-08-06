@@ -25,9 +25,10 @@ prettyComparedStats sc = concatMap Map.elems $ Map.elems $ (flip Map.mapWithKey)
                             \id stat -> buildTweetText w id stat
 
 buildTweetText :: Wikipedia -> StatIdentifier -> Integer -> String
-buildTweetText w id stat = "The " ++ language w ++ " edition of #Wikipedia "
+buildTweetText w id stat = (if (head . show) stat == '1' then "Hooray! " else "")
+                           ++ "The " ++ language w ++ " edition of #Wikipedia "
                            ++ (fromMaybe (\_ -> "") $ Map.lookup id statDescriptions) (formatStat stat)
-                           ++ "! Enjoy more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
+                           ++ "! Explore more stats here: https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
 
 formatStat :: Integer -> String
 formatStat n | n < 10000          = show n

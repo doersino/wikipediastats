@@ -6,8 +6,6 @@ import Tweeting
 
 import           Control.Monad       (when)
 
--- TODO tweet text details: "Enjoy", really? #Wikipedia or @Wikipedia?, or without any? Something like "Hooray?", maybe if new number starts with 1 (=10^n)?
-
 runWith :: Config -> IO ()
 runWith c = do
     statusLn "Successfully loaded configuration."
