@@ -4,7 +4,7 @@ import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
 
--- TODO actually test things
+-- TODO actually test things, https://hspec.github.io
 main :: IO ()
 main = hspec $ do
   describe "Prelude.head" $ do

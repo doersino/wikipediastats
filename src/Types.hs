@@ -25,7 +25,7 @@ statDescriptions = Map.fromList
     , ("mw-statistics-pages",    \s -> "now consists of " ++ s ++ " pages (including non-articles)")
     , ("mw-statistics-edits",    \s -> "has now received " ++ s ++ " edits")
     , ("mw-statistics-users",    \s -> "has now been shaped by " ++ s ++ " registered users")
-    , ("mw-statistics-hook",     \s -> "weighs in at " ++ s ++ " words")
+    , ("mw-statistics-hook",     \s -> "now weighs in at " ++ s ++ " words")
     ]
 
 type WikipediaStats = Map StatIdentifier Integer

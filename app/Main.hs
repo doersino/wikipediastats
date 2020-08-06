@@ -12,76 +12,75 @@ import qualified Data.Map as Map
 -- TODO decent test coverage for data manipulation functions, use https://hspec.github.io
 -- TODO error handling: https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
 
--- TODO make output helper methods, maybe somehow with reader monad for config?
-
 -- TODO finally, check for stray TODOs
+
+runWith :: Config -> IO ()
+runWith c = do
+    status "Successfully loaded configuration."
+    debug $ show c
+
+    status "Getting list of Wikipedias... "
+    w <- getWikipedias
+    w <- return $ take (limit $ generalConfig c) w
+    let m = length w
+    statusLn $ "got " ++ show m ++ "."
+    debug $ show w
+
+    let numberedWikipedias = zip [0..] w
+    s2 <- (flip mapM) numberedWikipedias $ \(n, w) -> do
+        status $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
+        s <- getStats w
+        statusLn $ "done."
+        debug $ show s
+        return s
+    let newStats = Map.fromList $ zip w s2  -- TODO move this to a function in StatsProcessing, or StatsIO
+
+    status "Reading previous stats from cache... "
+    oldStats' <- readStats $ cacheFile $ generalConfig c
+    statusLn "done."
+    debug $ show oldStats'
+
+    case oldStats' of
+        Just oldStats -> do
+            status "Comparing newly downloaded stats with cached stats... "
+            let comp = compareStats oldStats newStats
+            debug $ show comp
+
+            status "Turning comparison results into tweet texts... "
+            let tweetTexts' = prettyComparedStats comp
+            statusLn "done."
+            mapM_ debug tweetTexts'
+
+            tweetTexts <- if length tweetTexts' > 3
+                then do
+                    status "Only keeping the first three to avoid exceeding API limits (or the level of interest of followers)... "
+                    let top3 = take 3 $ tweetTexts'
+                    statusLn "done."
+                    mapM_ debug top3
+                    return top3
+                else return tweetTexts'
+
+            if (tweetingPossible $ twitterConfig c)
+                then do
+                    status "Tweeting... "
+                    mapM_ (postTweet $ twitterConfig c) tweetTexts
+                    statusLn "done."
+                else do
+                    statusLn "Tweeting is disabled since not all API keys and secrets have been specified."
+                    return ()
+        Nothing -> do
+            statusLn "Since no cached stats were present, I've got nothing to compare them against. Run me again and I will."
+            return ()
+
+    status "Writing updated stats to cache... "
+    writeStats (cacheFile $ generalConfig c) newStats
+    statusLn "done."
+  where
+    status s   = when (verbosity (generalConfig c) > 0) $ putStr s
+    statusLn s = status $ s ++ "\n"
+    debug  s   = when (verbosity (generalConfig c) == 2) $ putStrLn s
 
 main :: IO ()
 main = do
     configFile <- readFile "config.ini"
-    let config = parseIni configFile
-    let generalConf = generalConfig config
-    let twitterConf = twitterConfig config
-    let cachePath = cacheFile generalConf
-    let notSilent = verbosity generalConf > 0
-    let verbose   = verbosity generalConf == 2
-    when notSilent $ putStrLn "Successfully parsed configuration."
-    when verbose $ putStrLn $ show config
-
-    when notSilent $ putStr "Loading previous stats from cache... "
-    oldS <- readStats cachePath
-    when notSilent $ putStrLn "done."
-    when verbose $ putStrLn $ show oldS
-
-    when notSilent $ putStr "Getting list of Wikipedias... "
-    w <- getWikipedias
-    w <- return $ take (limit generalConf) w
-    let m = length w
-    when notSilent $ putStrLn $ "got " ++ show m ++ "."
-    when verbose $ putStrLn $ show w
-
-    let numberedWikipedias = zip [0..] w
-    s2 <- mapM (\(n, w) -> do
-        when notSilent $ putStr $ "Getting stats for " ++ subdomain w ++ ".wikipedia.org (" ++ show n ++ "/" ++ show m ++ ")... "
-        s <- getStats w
-        when notSilent $ putStrLn $ "done."
-        when verbose $ putStrLn $ show s
-        return s
-        ) numberedWikipedias
-    let s = Map.fromList $ zip w s2  -- TODO move this to a function in StatsProcessing, or StatsIO
-
-    case oldS of
-        Just os -> do
-            when notSilent $ putStr "Comparing newly downloaded stats with cached stats... "
-            let comp = compareStats os s
-            when verbose $ putStrLn $ show comp
-
-            when notSilent $ putStr "Turning comparison results into tweets... "
-            let pret = prettyComparedStats comp
-            when verbose $ mapM_ putStrLn pret
-            when notSilent $ putStrLn "done."
-
-            pret2 <- if length pret > 3
-                     then do
-                        when notSilent $ putStr "Only keeping the first three to avoid exceeding API limits... "
-                        let top3 = take 3 $ pret
-                        when verbose $ mapM_ putStrLn pret
-                        when notSilent $ putStrLn "done."
-                        return top3
-                     else return pret
-
-            if tweetingPossible twitterConf
-                then do
-                    when notSilent $ putStr "Tweeting... "
-                    mapM_ (postTweet twitterConf) pret2
-                    when notSilent $ putStrLn "done."
-                else do
-                    when notSilent $ putStrLn "Tweeting is disabled since not all API keys and secrets have been specified."
-                    return ()
-        Nothing -> do
-            when notSilent $ putStrLn "Since no cached stats were present, I've got nothing to compare them against. Run me again and I will."
-            return ()
-
-    when notSilent $ putStr "Storing updated stats... "
-    writeStats cachePath s
-    when notSilent $ putStrLn "done."
+    runWith $ parseIni configFile
