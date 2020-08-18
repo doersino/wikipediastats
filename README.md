@@ -13,7 +13,7 @@ While the main purpose of building this Twitter bot was to get myself reacquaint
 
 #### Now witness the ~~firepower~~results of this fully armed and operational ~~battle station~~Twitter bot and check out [@wikipediastats](https://twitter.com/wikipediastats)!
 
-*(As of August 6, 2020, the application for Twitter API access is still pending. Until that's gone through, I'll be running the bot occasionally and manually post the results.)*
+*(As it turns out, the otherwise-[excellent](https://uberspace.de) shared hosting plan I'm running all of my Twitter bots on limits RAM use to 1.5 GB per user, which is insufficient for building some of the dependencies of this bot. As a result, I've decided to reimplement and properly deploy the bot in Node.js – another language that I'd like to get up to speed on. A link will be forthcoming, but as a result, this repository will likely be unmaintained.)*
 
 
 ## Setup
