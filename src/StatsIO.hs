@@ -47,6 +47,7 @@ extractStat doc c = do
                &/ content
     return $ sanitize stat
   where
+    sanitize [] = Nothing  -- if the current stat hasn't been enabled for the current wikipedia
     sanitize stat = readMaybe $ filter isDigit $ (T.unpack . head) stat :: Maybe Integer
 
 getStats :: Wikipedia -> IO WikipediaStats
