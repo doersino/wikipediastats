@@ -26,9 +26,9 @@ data Config = Config
 parseConfig :: IniParser Config
 parseConfig = do
     general <- section "GENERAL" $ do
-        cacheFile       <- field        "cache_file"
-        verbosity       <- fieldOf      "verbosity"       number
-        limit <- fieldOf      "limit" number
+        cacheFile  <- field   "cache_file"
+        verbosity  <- fieldOf "verbosity"  number
+        limit      <- fieldOf "limit"      number
         return $ GeneralConfig (T.unpack cacheFile) verbosity limit
     twitter <- section "TWITTER" $ do
         consumerKey       <- field "consumer_key"
