@@ -36,7 +36,7 @@ getWikipedias = do
     return $ map (\s -> Wikipedia (s !! 1) (s !! 0)) langs
 
 getStatsPage :: Wikipedia -> IO Document
-getStatsPage w = fetchUrl $ "https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics"
+getStatsPage w = fetchUrl $ "https://" ++ subdomain w ++ ".wikipedia.org/wiki/Special:Statistics?uselang=en"  -- sets language to english, which most importantly yields arabic instead of native numerals
 
 extractStat :: Document -> String -> IO (Maybe Integer)
 extractStat doc c = do
