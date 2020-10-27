@@ -1,5 +1,9 @@
 # wikipediastats
 
+As it turns out, the otherwise-[excellent](https://uberspace.de) shared hosting plan I'm running all of my Twitter bots on limits RAM use to 1.5 GB per user, which is insufficient for building some of the dependencies of this bot. As a result, I've [decided to reimplement it in JavaScript](https://github.com/doersino/wikipediastats.js) – another language that I wanted to get up to speed on (in a server context, anyway, i.e. with Node.js). **Long story short: This repository will remain unmaintained.**
+
+---
+
 *A Haskell-powered Twitter bot that posts milestones and statistics of various Wikipedias.*
 
 While the main purpose of building this Twitter bot was to get myself reacquainted with Haskell, it's actually doing semi-interesting stuff. Whenever you run this program, it
@@ -12,8 +16,6 @@ While the main purpose of building this Twitter bot was to get myself reacquaint
 
 
 #### Now witness the ~~firepower~~results of this fully armed and operational ~~battle station~~Twitter bot and check out [@wikipediastats](https://twitter.com/wikipediastats)!
-
-*(As it turns out, the otherwise-[excellent](https://uberspace.de) shared hosting plan I'm running all of my Twitter bots on limits RAM use to 1.5 GB per user, which is insufficient for building some of the dependencies of this bot. As a result, I've decided to reimplement and properly deploy the bot in Node.js – another language that I'd like to get up to speed on. A link will be forthcoming, but as a result, this repository will likely be unmaintained.)*
 
 
 ## Setup
