@@ -49,7 +49,7 @@ $ stack test
 If you're actually intending to use this as a Twitter bot, set up a cronjob to execute `stack run` every hour or so, roughly like this:
 
 ```cron
-0 * * * * cd PATH_TO_WIKIPEDIASTATS; stack run
+0 * * * * cd PATH_TO_WIKIPEDIASTATS && stack run
 ```
 
 
